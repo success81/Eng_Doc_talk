@@ -10,11 +10,15 @@ COPY . /app
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the service account key into the container
+COPY my_key.json /app/my_key.json
+
 # Expose the port that the app runs on
 EXPOSE 8080
 
 # Define environment variable for Google Cloud Run
 ENV PORT 8080
+ENV GOOGLE_APPLICATION_CREDENTIALS /home/whitfield_home_202/Eng_Doc_talk/basic_doc_chat/my_key.json
 
 # Run the application
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
