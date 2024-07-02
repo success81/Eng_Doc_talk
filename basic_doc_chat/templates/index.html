@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IM-50 AI Discovery Zone</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background">
+        <img src="/static/windmill.jpg" alt="Background" class="background-img">
+    </div>
+    <div class="logo">
+        <img src="/static/logo.png" alt="DOE Logo" class="logo-img">
+    </div>
+    <div class="container">
+        <h1 class="title">IM-50 AI Discovery Zone</h1>
+        <div id="upload-box" class="box">
+            <div class="upload-instructions">
+                <h2><u>IM-50 Discovery Zone</u></h2>
+                <p>Welcome to the IM-50 AI Discovery Zone! Get answers to your questions or unlock insights from your own publicly available documents. Engage in conversation with our AI by asking general questions or talk to your own documents to get insights.</p>
+                <h2><u>AI Rules of Engagement</u></h2>
+                <ul>
+                    <li>Use only public data.</li>
+                    <li>Documents must not exceed a total of 1 million words.</li>
+                    <li>Upload up to 4 documents.</li>
+                    <li>This tool is for Department of Energy personnel only.</li>
+                </ul>
+            </div>
+            <div class="upload-form">
+                <h2>Upload Documents</h2>
+                <form id="upload-form" enctype="multipart/form-data">
+                    <input type="file" id="files" name="files[]" multiple required>
+                    <button type="submit">Upload</button>
+                </form>
+                <div id="upload-message"></div>
+                <h3>Uploaded Documents:</h3>
+                <ul id="document-list">
+                    {% for doc in documents %}
+                        <li>{{ doc }} <button onclick="deleteDocument('{{ doc }}')">Delete</button></li>
+                    {% endfor %}
+                </ul>
+                <button onclick="clearAll()">Clear All</button>
+            </div>
+        </div>
+        <div id="chat-box" class="box">
+            <div id="chat-history"></div>
+            <form id="chat-form">
+                <textarea id="message" name="message" placeholder="Type your question here..." required></textarea>
+                <button type="submit">Send</button>
+            </form>
+            <button onclick="clearChat()">Clear Chat</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const files = document.getElementById('files').files;
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            document.getElementById('upload-message').innerText = data.message || data.error;
+            if (data.documents) {
+                const documentList = document.getElementById('document-list');
+                documentList.innerHTML = '';
+                data.documents.forEach(doc => {
+                    documentList.innerHTML += `<li>${doc} <button onclick="deleteDocument('${doc}')">Delete</button></li>`;
+                });
+            }
+        });
+
+        async function deleteDocument(filename) {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'filename': filename
+                })
+            });
+            const data = await response.json();
+            document.getElementById('upload-message').innerText = data.message || data.error;
+            if (data.documents) {
+                const documentList = document.getElementById('document-list');
+                documentList.innerHTML = '';
+                data.documents.forEach(doc => {
+                    documentList.innerHTML += `<li>${doc} <button onclick="deleteDocument('${doc}')">Delete</button></li>`;
+                });
+            }
+        }
+
+        async function clearAll() {
+            const response = await fetch('/clear', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            document.getElementById('upload-message').innerText = data.message;
+            document.getElementById('document-list').innerHTML = '';
+        }
+
+        async function clearChat() {
+            document.getElementById('chat-history').innerHTML = '';
+        }
+
+        document.getElementById('chat-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const message = document.getElementById('message').value;
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'message': message
+                })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                const chatHistory = document.getElementById('chat-history');
+                chatHistory.innerHTML += `<p>You: ${message}</p><p>AI: ${data.response}</p>`;
+                document.getElementById('message').value = '';
+                chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll to the bottom
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+
+        // JavaScript to handle the fading effect of the logo
+        window.addEventListener('scroll', function() {
+            const logo = document.querySelector('.logo-img');
+            const maxScroll = 100; // Adjust this value as needed
+            const opacity = Math.max(0, 1 - window.scrollY / maxScroll);
+            logo.style.opacity = opacity;
+        });
+    </script>
+</body>
+</html>
+
